@@ -1,0 +1,37 @@
+# Запуск: docker compose up --build
+# Приложение: http://localhost:8080 (порт меняется переменной WEB_PORT)
+name: tickets
+
+services:
+  api:
+    build: ./backend
+    environment:
+      # Демо-режим включён в этой конфигурации, чтобы можно было показать нехватку мест.
+      # Для публичного развёртывания: DEMO_MODE=false
+      DEMO_MODE: ${DEMO_MODE:-true}
+      EVENT_TOTAL_SEATS: ${EVENT_TOTAL_SEATS:-10}
+    volumes:
+      - tickets-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  tickets-data:
